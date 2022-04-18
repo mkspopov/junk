@@ -1,5 +1,7 @@
+#include "hero.h"
 #include "particles.h"
 
+#include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Window/Event.hpp>
 
 #include <iostream>
@@ -7,113 +9,8 @@
 
 inline std::vector<sf::Color> COLORS;
 
-static constexpr int WIDTH = 1280;
-static constexpr int HEIGHT = 720;
-
-struct Hero {
-    Hero() {
-        physics.shapes.emplace_back(sf::Vector2f(50, 50));
-        physics.shapes.back().setFillColor(sf::Color::Red);
-        physics.shapes.back().setPosition(WIDTH / 2, HEIGHT / 2);
-
-        keyPressed_.fill(false);
-
-        physics.velocities.emplace_back();
-        physics.masses.push_back(100);
-    }
-
-    void HandleInput(const sf::Event& event) {
-        if (event.type == sf::Event::KeyPressed) {
-            switch (event.key.code) {
-                case sf::Keyboard::W:
-                    keyPressed_[sf::Keyboard::W] = true;
-                    break;
-                case sf::Keyboard::S:
-                    keyPressed_[sf::Keyboard::S] = true;
-                    break;
-                case sf::Keyboard::A:
-                    keyPressed_[sf::Keyboard::A] = true;
-                    break;
-                case sf::Keyboard::D:
-                    keyPressed_[sf::Keyboard::D] = true;
-                    break;
-                default:
-                    break;
-            }
-        } else if (event.type == sf::Event::KeyReleased) {
-            switch (event.key.code) {
-                case sf::Keyboard::W:
-                    keyPressed_[sf::Keyboard::W] = false;
-                    break;
-                case sf::Keyboard::S:
-                    keyPressed_[sf::Keyboard::S] = false;
-                    break;
-                case sf::Keyboard::A:
-                    keyPressed_[sf::Keyboard::A] = false;
-                    break;
-                case sf::Keyboard::D:
-                    keyPressed_[sf::Keyboard::D] = false;
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        auto& velocity = physics.velocities.back();
-        if (keyPressed_[sf::Keyboard::W]) {
-            if (keyPressed_[sf::Keyboard::A]) {
-                velocity.x = -SPEED / std::numbers::sqrt2;
-                velocity.y = -SPEED / std::numbers::sqrt2;
-            } else if (keyPressed_[sf::Keyboard::D]) {
-                velocity.x = SPEED / std::numbers::sqrt2;
-                velocity.y = -SPEED / std::numbers::sqrt2;
-            } else {
-                velocity.y = -SPEED;
-                velocity.x = 0;
-            }
-        } else if (keyPressed_[sf::Keyboard::S]) {
-            if (keyPressed_[sf::Keyboard::A]) {
-                velocity.x = -SPEED / std::numbers::sqrt2;
-                velocity.y = SPEED / std::numbers::sqrt2;
-            } else if (keyPressed_[sf::Keyboard::D]) {
-                velocity.x = SPEED / std::numbers::sqrt2;
-                velocity.y = SPEED / std::numbers::sqrt2;
-            } else {
-                velocity.y = SPEED;
-                velocity.x = 0;
-            }
-        } else if (keyPressed_[sf::Keyboard::A]) {
-            velocity.x = -SPEED;
-            velocity.y = 0;
-        } else if (keyPressed_[sf::Keyboard::D]) {
-            velocity.x = SPEED;
-            velocity.y = 0;
-        } else {
-            velocity.x = 0;
-            velocity.y = 0;
-        }
-    }
-
-    void Render(sf::RenderWindow& window, float dt) {
-        auto s = physics.shapes.back();
-        s.move(physics.velocities.back() * dt);
-        window.draw(s);
-    }
-
-    void Update() {
-        physics.shapes.back().move(physics.velocities.back());
-    }
-
-    Physics physics;
-    std::array<bool, sf::Keyboard::KeyCount> keyPressed_;
-    static constexpr float SPEED = 10;
-};
-
-int main() {
-    Particles particles;
-    particles.Add(500, {WIDTH / 2 - 500, HEIGHT / 2 - 400, 1000, 1000});
-
-    COLORS = {sf::Color::Cyan, sf::Color::Red, sf::Color::Blue};
+int GameLoop(Particles& particles) {
+    COLORS = {sf::Color::Cyan, sf::Color::Red, sf::Color::Blue, sf::Color::Green};
 
     sf::ContextSettings settings;
     settings.antialiasingLevel = 16;
@@ -122,8 +19,9 @@ int main() {
     sf::Clock clock;
     sf::Int64 lag = 0;
     const int usPerUpdate = 30000;
+    std::size_t tick = 0;
 
-    Hero hero;
+//    hero::Hero hero;
 
     bool spammingBricks = false;
     while (window.isOpen()) {
@@ -140,7 +38,7 @@ int main() {
                     spammingBricks = false;
                 }
             }
-            hero.HandleInput(event);
+//            hero.HandleInput(event);
         }
 
         if (spammingBricks) {
@@ -157,21 +55,42 @@ int main() {
         lag += elapsed.asMicroseconds();
 
         while (lag >= usPerUpdate) {
-            hero.Update();
-            particles.Update(window, {&hero.physics});
+//            hero.Update();
+//            std::cerr << "tick: " << tick << std::endl;
+            particles.Update(window, {});
+//            particles.Update(window, {&hero.physics});
             lag -= usPerUpdate;
+            ++tick;
         }
 
         const bool smooth = true;
         if (smooth) {
-            hero.Render(window, static_cast<float>(lag) / usPerUpdate);
+//            hero.Render(window, static_cast<float>(lag) / usPerUpdate);
             particles.Render(window, static_cast<float>(lag) / usPerUpdate);
         } else {
-            hero.Render(window, 0);
+//            hero.Render(window, 0);
             particles.Render(window, 0);
         }
         window.display();
     }
 
     return 0;
+}
+
+void Main() {
+    Particles particles;
+    particles.Add(500, {WIDTH / 2 - 500, HEIGHT / 2 - 400, 1000, 1000});
+    GameLoop(particles);
+}
+
+void TestBadCase() {
+    Particles particles;
+    particles.Add(535.78, 327.676, -2, -3, 20, 28);
+    particles.Add(515.377, 308.819, 2, 1, 26, 28);
+    GameLoop(particles);
+}
+
+int main() {
+    Main();
+//    TestBadCase();
 }

@@ -14,14 +14,24 @@ target_link_libraries(
     sfml-window
 )
 
+add_library(
+    hero
+    hero.cpp hero.h
+)
+
 add_executable(
     main
     main.cpp
 )
 
 target_link_libraries(
-    main
+    hero
     particles
+)
+
+target_link_libraries(
+    main
+    hero
     pthread
 )
 
