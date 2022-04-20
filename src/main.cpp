@@ -19,7 +19,6 @@ int GameLoop(Particles& particles) {
     sf::Clock clock;
     sf::Int64 lag = 0;
     const int usPerUpdate = 30000;
-    std::size_t tick = 0;
 
 //    hero::Hero hero;
 
@@ -45,6 +44,7 @@ int GameLoop(Particles& particles) {
             auto [x, y] = sf::Mouse::getPosition(window);
             particles.Add(
                 WindXy(x, y),
+                sf::Vector2f(Rand(-0.3f, 0.3f), Rand(0.3f, 0.3f)),
                 sf::Vector2f(Rand(-2, 2), Rand(0, 10)),
                 sf::Vector2f(Rand(10, 20), Rand(10, 20))
             );
@@ -78,6 +78,9 @@ int GameLoop(Particles& particles) {
 }
 
 void Main() {
+    if (!PURISA_FONT.loadFromFile("/usr/share/fonts/truetype/tlwg/Purisa-Bold.ttf")) {
+        throw std::runtime_error("No font!");
+    }
     Particles particles;
     particles.Add(500, {WIDTH / 2 - 500, HEIGHT / 2 - 400, 1000, 1000});
     GameLoop(particles);
@@ -85,12 +88,9 @@ void Main() {
 
 void TestBadCase() {
     Particles particles;
-    particles.Add(535.78, 327.676, -2, -3, 20, 28);
-    particles.Add(515.377, 308.819, 2, 1, 26, 28);
     GameLoop(particles);
 }
 
 int main() {
     Main();
-//    TestBadCase();
 }

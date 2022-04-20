@@ -3,6 +3,7 @@ add_library(
     particles.cpp particles.h
 )
 
+find_package(Boost REQUIRED COMPONENTS system)
 find_package(SFML REQUIRED COMPONENTS audio graphics network system window)
 
 target_link_libraries(
@@ -12,6 +13,7 @@ target_link_libraries(
     sfml-network
     sfml-system
     sfml-window
+    ${Boost_LIBRARIES}
 )
 
 add_library(

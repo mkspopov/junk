@@ -34,19 +34,38 @@ struct FirstHit {
 };
 
 struct Physics {
-    void PushBack(sf::RectangleShape shape, sf::Vector2f velocity, float mass) {
-        shapes.push_back(shape);
+    void Erase(std::size_t index) {
+        shapes.erase(shapes.begin() + index);
+        accelerations.erase(accelerations.begin() + index);
+        velocities.erase(velocities.begin() + index);
+        masses.erase(masses.begin() + index);
+    }
+
+    void PushBack(
+        sf::RectangleShape shape,
+        sf::Vector2f velocity,
+        sf::Vector2f acceleration,
+        float mass)
+    {
+        shapes.push_back(std::move(shape));
+        accelerations.push_back(acceleration);
         velocities.push_back(velocity);
         masses.push_back(mass);
     }
 
     void PopBack() {
         shapes.pop_back();
+        accelerations.pop_back();
         velocities.pop_back();
         masses.pop_back();
     }
 
+    std::size_t Size() const {
+        return shapes.size();
+    }
+
     std::vector<sf::RectangleShape> shapes;
+    std::vector<sf::Vector2f> accelerations;
     std::vector<sf::Vector2f> velocities;
     std::vector<float> masses;
 };
@@ -54,8 +73,8 @@ struct Physics {
 struct Particles {
     void Add(int num, sf::FloatRect where);
 
-    bool Add(WindXy at, sf::Vector2f velocity, sf::Vector2f size, float density = 1);
-    bool Add(float atx, float aty, float vx, float vy, float sx, float sy, float density = 1);
+    bool Add(WindXy at, sf::Vector2f acceleration, sf::Vector2f velocity, sf::Vector2f size, float density = 1);
+    bool Add(float atx, float aty, float ax, float ay, float vx, float vy, float sx, float sy, float density = 1);
 
     void Render(sf::RenderWindow& window, float part);
 
@@ -66,5 +85,14 @@ struct Particles {
     std::vector<std::pair<std::unique_ptr<sf::Shape>, int>> toRender;
 
 private:
+    struct BoundingBox {
+        sf::FloatRect rect;
+        std::size_t index;
+    };
+
+    void CheckCollision(std::size_t i, std::size_t j);
+    void SimpleCheck(const std::vector<BoundingBox>& boxes);
+    void UpdateCollisions(std::vector<BoundingBox>& boxes, bool sortByX);
+
     std::vector<Locked<FirstHit>> firstHits_;
 };
