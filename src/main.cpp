@@ -104,8 +104,6 @@ void TestBadCase() {
     GameLoop(particles);
 }
 
-const inline sf::Color GREY = {0x80, 0x80, 0x80};
-
 struct WaterBottle {
     WaterBottle() {
         borders_.emplace_back(WindXy(50, 500));
@@ -163,11 +161,20 @@ void BottleOfWater() {
 }
 
 void MainCars() {
-    std::cerr << sizeof(sf::FloatRect) << std::endl;
     sf::ContextSettings settings;
     settings.antialiasingLevel = 16;
     sf::RenderWindow window({WIDTH, HEIGHT}, "Game", sf::Style::Default, settings);
     Cars cars;
+
+    std::uniform_real_distribution<float> dis(0, 1);
+    for (int i = 0; i < 10; ++i) {
+        cars.Add({dis(gen) * WIDTH, dis(gen) * HEIGHT}, {dis(gen) * 3, dis(gen) * 3}, 0, {dis(gen) * WIDTH, dis(gen) * HEIGHT});
+    }
+
+    sf::Clock clock;
+    sf::Int64 lag = 0;
+    const int usPerUpdate = 30000;
+
     while (window.isOpen()) {
         sf::Event event;
         if (window.pollEvent(event)) {
@@ -175,8 +182,16 @@ void MainCars() {
                 std::exit(0);
             }
         }
-        cars.Update(window);
+        auto elapsed = clock.restart();
+        lag += elapsed.asMicroseconds();
+
+        if (lag >= usPerUpdate) {
+            cars.Update(window);
+            lag -= usPerUpdate;
+        }
+
         window.clear(PEACH_PUFF);
+        cars.Render(window, static_cast<float>(lag) / usPerUpdate);
         window.display();
     }
 }

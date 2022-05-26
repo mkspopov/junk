@@ -1,28 +1,100 @@
 #pragma once
 
+#include "particles.h"
+
 #include <SFML/Window.hpp>
 #include <SFML/Graphics.hpp>
 
 #include <vector>
 
 struct Cars {
-    std::vector<sf::FloatRect> pos_;
-    std::vector<sf::Vector2f> vel_;
-    std::vector<int> from_;
-    std::vector<int> to_;
+    void Add(WindXy at, sf::Vector2f velocity, int start, WindXy finish) {
+        sf::FloatRect rect = {at, {30, 30}};
+        for (const auto& other : physics.rects) {
+            if (rect.intersects(other)) {
+                return;
+            }
+        }
+        physics.PushBack(rect, velocity, WindXy(0, 0), 1);
+        from.push_back(start);
+        to.push_back(finish);
+    }
 
-    void Render(sf::RenderWindow& window) const {
-        for (auto pos : pos_) {
-            auto rect = sf::RectangleShape(WindXy(pos.width, pos.height));
-            rect.setPosition(pos.left, pos.top);
-            rect.setFillColor(GREY);
-            window.draw(rect);
+    static void CollisionsCallback(
+        Physics& physics,
+        float dt,
+        const std::vector<std::size_t>& hitIndices,
+        std::vector<Locked<FirstHit>>& firstHits)
+    {
+        if (dt > 0) {
+            // Move all before the first hit
+            for (std::size_t i = 0; i < physics.Size(); ++i) {
+                Move(physics.rects[i], physics.velocities[i] * dt);
+            }
+        }
+
+        for (std::size_t i : hitIndices) {
+            // Cancel above Move
+            Move(physics.rects[i], -physics.velocities[i] * dt);
+
+            const auto j = firstHits[i]->otherIndex;
+            physics.SetVelocity(i, {0, 0});
+            physics.SetVelocity(j, {0, 0});
+        }
+    }
+
+    void Render(sf::RenderWindow& window, float part) const {
+        for (std::size_t i = 0; i < physics.Size(); ++i) {
+            auto rect = physics.rects[i];
+            auto shape = sf::RectangleShape(WindXy(rect.width, rect.height));
+            shape.setPosition(rect.left, rect.top);
+            shape.move(physics.velocities[i] * part);
+            shape.setFillColor(GREY);
+            window.draw(shape);
         }
     }
 
     void Update(sf::RenderWindow& window) {
-        static CollisionDetector<Cars> collisionDetector;
+        for (std::size_t i = 0; i < physics.Size(); ++i) {
+            physics.SetVelocity(i, SPEED * Normed(to[i] - GetPosition(physics.rects[i])));
+//            physics.SetVelocity(i, physics.velocities[i] + physics.accelerations[i]);
+        }
+
+        static CollisionDetector detector;
+        detector.Clear();
+
         float timeLeft = 1;
-        collisionDetector.Detect(*this, timeLeft);
+        while (timeLeft > 0 && detector.Detect(physics, timeLeft, CollisionsCallback)) {
+        }
+
+        if (timeLeft > 0) {
+            for (std::size_t i = 0; i < physics.Size(); ++i) {
+                Move(physics.rects[i], physics.velocities[i] * timeLeft);
+            }
+        }
+
+        std::vector<std::size_t> dead;
+        for (std::size_t i = 0; i < physics.Size(); ++i) {
+            const auto& rect = physics.rects[i];
+            const float windX = window.getSize().x;
+            const float windY = window.getSize().y;
+            if (rect.left > windX ||
+                rect.top > windY ||
+                rect.left + rect.width < -windX ||
+                rect.top + rect.height < -windY)
+            {
+                dead.push_back(i);
+            }
+        }
+        for (auto i = dead.rbegin(); i != dead.rend(); ++i) {
+            physics.Erase(*i);
+            from.erase(from.begin() + *i);
+            to.erase(to.begin() + *i);
+        }
     }
+
+    Physics physics;
+    std::vector<int> from;
+    std::vector<WindXy> to;
+    static constexpr float SPEED = 10;
 };

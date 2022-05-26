@@ -18,6 +18,7 @@ inline const auto PEACH_PUFF = sf::Color(0xFFDAB9FF);
 inline const auto LIGHT_GREY = sf::Color(0x7f7f7faa);
 inline const auto DARK_GREY = sf::Color(0x6B6E76FF);
 inline const auto SCARLET = sf::Color(0xfc2847ff);
+const inline sf::Color GREY = {0x80, 0x80, 0x80};
 
 namespace std {
 
