@@ -2,6 +2,7 @@
 
 #include "utils.h"
 
+#include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Vector2.hpp>
@@ -12,15 +13,8 @@
 #include <unordered_set>
 #include <vector>
 
-using WindXy = sf::Vector2f;
-
-inline const auto PEACH_PUFF = sf::Color(0xFFDAB9FF);
-inline const auto LIGHT_GREY = sf::Color(0x7f7f7faa);
-inline const auto DARK_GREY = sf::Color(0x6B6E76FF);
-inline const auto SCARLET = sf::Color(0xfc2847ff);
-
-static constexpr int WIDTH = 1280;
-static constexpr int HEIGHT = 720;
+inline float GRAVITY_CONST = 1;
+inline float MAX_SPEED = 5;
 
 struct FirstHit {
     bool CanHit(std::size_t index) const {
@@ -42,7 +36,7 @@ struct Physics {
     }
 
     void PushBack(
-        sf::RectangleShape shape,
+        sf::FloatRect shape,
         sf::Vector2f velocity,
         sf::Vector2f acceleration,
         float mass)
@@ -60,14 +54,42 @@ struct Physics {
         masses.pop_back();
     }
 
+    void SetVelocity(std::size_t index, sf::Vector2f velocity) {
+        auto speed = std::abs(velocity);
+        velocities[index] = velocity;
+        if (speed > MAX_SPEED) {
+            velocities[index] *= MAX_SPEED / speed;
+        }
+    }
+
     std::size_t Size() const {
         return shapes.size();
     }
 
-    std::vector<sf::RectangleShape> shapes;
+    std::vector<sf::FloatRect> shapes;
     std::vector<sf::Vector2f> accelerations;
     std::vector<sf::Vector2f> velocities;
     std::vector<float> masses;
+};
+
+struct GravityForce {
+    void Apply(Physics& physics) const {
+        for (std::size_t i = 0; i < physics.Size(); ++i) {
+            const auto direction = position - Center(physics.shapes[i]);
+            const auto distance = std::abs(direction);
+            physics.velocities[i] += GRAVITY_CONST * mass / std::pow(distance, 3.f) * direction;
+        }
+    }
+
+    void Render(sf::RenderWindow& window) {
+        sf::CircleShape circle(3);
+        circle.setPosition(position);
+        circle.setFillColor(sf::Color::Magenta);
+        window.draw(circle);
+    }
+
+    float mass;
+    WindXy position;
 };
 
 struct Particles {
@@ -83,6 +105,14 @@ struct Particles {
     Physics physics;
 
     std::vector<std::pair<std::unique_ptr<sf::Shape>, int>> toRender;
+};
+
+template <class TPhysics>
+class CollisionDetector {
+public:
+    void Clear();
+
+    bool Detect(TPhysics& physics, float& timeLeft);
 
 private:
     struct BoundingBox {
@@ -90,9 +120,10 @@ private:
         std::size_t index;
     };
 
-    void CheckCollision(std::size_t i, std::size_t j);
-    void SimpleCheck(const std::vector<BoundingBox>& boxes);
-    void UpdateCollisions(std::vector<BoundingBox>& boxes, bool sortByX);
+    void CheckCollision(TPhysics& physics, std::size_t i, std::size_t j);
+    void SimpleCheck(TPhysics& physics, const std::vector<BoundingBox>& boxes);
+    void UpdateCollisions(TPhysics& physics, std::vector<BoundingBox>& boxes, bool sortByX);
 
+    std::vector<BoundingBox> boxes_;
     std::vector<Locked<FirstHit>> firstHits_;
 };

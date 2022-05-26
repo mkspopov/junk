@@ -5,19 +5,23 @@
 TEST(Collisions, OneDimension) {
     Particles particles;
     auto check = [&](int i, sf::Vector2f pos, sf::Vector2f velocity) {
-        ASSERT_FLOAT_EQ(particles.shapes[i].getPosition().x, pos.x);
-        ASSERT_FLOAT_EQ(particles.shapes[i].getPosition().y, pos.y);
-        ASSERT_FLOAT_EQ(particles.velocities[i].x, velocity.x);
-        ASSERT_FLOAT_EQ(particles.velocities[i].y, velocity.y);
+        ASSERT_FLOAT_EQ(particles.physics.shapes[i].getPosition().x, pos.x);
+        ASSERT_FLOAT_EQ(particles.physics.shapes[i].getPosition().y, pos.y);
+        ASSERT_FLOAT_EQ(particles.physics.velocities[i].x, velocity.x);
+        ASSERT_FLOAT_EQ(particles.physics.velocities[i].y, velocity.y);
     };
-    particles.Add({5, 15}, {3, 0}, {5, 5});
-    particles.Add({20, 17}, {-2, 0}, {5, 5});
-    particles.Update();
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Test");
+    particles.Add({5, 15}, {0, 0}, {3, 0}, {5, 5});
+    particles.Add({20, 17}, {0, 0}, {-2, 0}, {5, 5});
+    particles.Update(window, {});
     check(0, {8, 15}, {3, 0});
     check(1, {18, 17}, {-2, 0});
-    particles.Update();
-    check(0, {11, 15}, {-2, 0});
-    check(1, {16, 17}, {3, 0});
+    particles.Update(window, {});
+    check(0, {11, 15}, {3, 0});
+    check(1, {16, 17}, {-2, 0});
+    particles.Update(window, {});
+    check(0, {9, 15}, {-2, 0});
+    check(1, {19, 17}, {3, 0});
 }
 
 int main(int argc, char **argv) {
