@@ -1,17 +1,16 @@
 #include "cars.h"
+#include "graph.h"
 #include "hero.h"
 #include "particles.h"
 
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Window/Event.hpp>
 
+#include <cassert>
 #include <iostream>
 #include <numeric>
 
 inline std::vector<sf::Color> COLORS;
-
-static constexpr int WIDTH = 2000;
-static constexpr int HEIGHT = 1000;
 
 int GameLoop(Particles& particles) {
     COLORS = {sf::Color::Cyan, sf::Color::Red, sf::Color::Blue, sf::Color::Green};
@@ -147,6 +146,10 @@ void BottleOfWater() {
     settings.antialiasingLevel = 16;
     sf::RenderWindow window({WIDTH, HEIGHT}, "Game", sf::Style::Default, settings);
     WaterBottle bottleOfWater;
+    sf::Clock clock;
+    sf::Int64 lag = 0;
+    const int usPerUpdate = 30000;
+
     while (window.isOpen()) {
         sf::Event event;
         if (window.pollEvent(event)) {
@@ -154,26 +157,143 @@ void BottleOfWater() {
                 std::exit(0);
             }
         }
-        window.clear(PEACH_PUFF);
+//        window.clear(PEACH_PUFF);
+//        auto elapsed = clock.restart();
+//        lag += elapsed.asMicroseconds();
+
+//        if (lag >= usPerUpdate) {
+//            game.Update(window);
+//            lag -= usPerUpdate;
+//        }
+
         bottleOfWater.Render(window);
         window.display();
     }
 }
 
+class Game {
+public:
+    Game() {
+        sources = {
+            {0, 100},
+        };
+        periods = {
+            {50, 0},
+        };
+        targets = {
+            {WIDTH, 900},
+        };
+    }
+
+    void Update(sf::RenderWindow& window) {
+        // choose direction
+        for (std::size_t i = 0; i < cars.physics.Size(); ++i) {
+            const auto vertex = GetVertex(Center(cars.physics.rects[i]));
+            if (vertex < 0) {
+                continue;
+            }
+            int minCost = 1;
+            int bestDirection;
+            Graph::Edge* edge = nullptr;
+            for (int dirInd = 0; dirInd < Graph::DIRS.size(); ++dirInd) {
+                auto cur = graph.GetEdge(vertex, dirInd);
+                if (cur && minCost > cur->cost) {
+                    minCost = cur->cost;
+                    edge = cur;
+                    bestDirection = dirInd;
+                }
+            }
+            const auto targetDir = Normed(cars.to[i] - Center(cars.physics.rects[i]));
+            const WindXy intTargetDir = {std::round(targetDir.x), std::round(targetDir.y)};
+            if (!edge) {
+                int dirInd = std::find(Graph::DIRS.begin(), Graph::DIRS.end(), intTargetDir) -
+                    Graph::DIRS.begin();
+                assert(dirInd < Graph::DIRS.size());
+                edge = graph.AddEdge(vertex, dirInd);
+                bestDirection = dirInd;
+            }
+            if (NORMAL(gen) > 0.5f) {
+                std::array<int, Graph::DIRS.size()> dirInds;
+                std::iota(dirInds.begin(), dirInds.end(), 0);
+                std::sort(dirInds.begin(), dirInds.end(), [&](int lhs, int rhs) {
+                    return Cos(Graph::DIRS[lhs], targetDir) > Cos(Graph::DIRS[rhs], targetDir);
+                });
+                for (int dirInd : dirInds) {
+                    if (!graph.HasEdge(vertex, dirInd)) {
+                        edge = graph.AddEdge(vertex, dirInd);
+                        bestDirection = dirInd;
+                        break;
+                    }
+                }
+            }
+            --edge->cost;
+            cars.physics.SetVelocity(i, Cars::SPEED * Graph::DIRS[bestDirection]);
+        }
+
+        cars.Update(window);
+
+        // spawn cars
+        for (int i = 0; i < sources.size(); ++i) {
+            if (periods[i].rest == 0) {
+                cars.Add(
+                    sources[i],
+                    (targets[0] - sources[i]) / 100.f,
+                    targets[0]);
+                periods[i].rest = periods[i].total;
+            }
+            --periods[i].rest;
+        }
+
+        // remove cars
+        for (int i = cars.physics.Size(); i >= 0; --i) {
+            if (std::abs(Center(cars.physics.rects[i]) - targets[0]) < 20) {
+                cars.Erase(i);
+            }
+        }
+    }
+
+    void Render(sf::RenderWindow& window, float part) {
+        cars.Render(window, part);
+
+        for (auto pos : sources) {
+            auto shape = sf::CircleShape(30);
+            shape.setPosition(WindXy(pos.x, pos.y) - Center(shape.getGlobalBounds()));
+            shape.setFillColor(sf::Color::Cyan);
+            window.draw(shape);
+        }
+        for (auto pos : targets) {
+            auto shape = sf::CircleShape(30);
+            shape.setPosition(WindXy(pos.x, pos.y) - Center(shape.getGlobalBounds()));
+            shape.setFillColor(sf::Color::Green);
+            window.draw(shape);
+        }
+
+        graph.Render(window);
+    }
+
+private:
+    Cars cars;
+    Graph graph = Graph((WIDTH / DPIXELS + 1) * (HEIGHT / DPIXELS + 1));
+    std::vector<WindXy> sources;
+
+    struct Period {
+        int total;
+        int rest = 0;
+    };
+
+    std::vector<Period> periods;
+    std::vector<WindXy> targets;
+};
+
 void MainCars() {
     sf::ContextSettings settings;
     settings.antialiasingLevel = 16;
     sf::RenderWindow window({WIDTH, HEIGHT}, "Game", sf::Style::Default, settings);
-    Cars cars;
-
-    std::uniform_real_distribution<float> dis(0, 1);
-    for (int i = 0; i < 10; ++i) {
-        cars.Add({dis(gen) * WIDTH, dis(gen) * HEIGHT}, {dis(gen) * 3, dis(gen) * 3}, 0, {dis(gen) * WIDTH, dis(gen) * HEIGHT});
-    }
+    Game game;
 
     sf::Clock clock;
     sf::Int64 lag = 0;
-    const int usPerUpdate = 30000;
+    const int usPerUpdate = 300;
 
     while (window.isOpen()) {
         sf::Event event;
@@ -186,12 +306,12 @@ void MainCars() {
         lag += elapsed.asMicroseconds();
 
         if (lag >= usPerUpdate) {
-            cars.Update(window);
+            game.Update(window);
             lag -= usPerUpdate;
         }
 
         window.clear(PEACH_PUFF);
-        cars.Render(window, static_cast<float>(lag) / usPerUpdate);
+        game.Render(window, static_cast<float>(lag) / usPerUpdate);
         window.display();
     }
 }

@@ -14,6 +14,11 @@ using WindXy = sf::Vector2f;
 
 inline sf::Font PURISA_FONT;
 
+static constexpr int WIDTH = 2000;
+static constexpr int HEIGHT = 1000;
+
+static constexpr int DPIXELS = 5;
+
 inline const auto PEACH_PUFF = sf::Color(0xFFDAB9FF);
 inline const auto LIGHT_GREY = sf::Color(0x7f7f7faa);
 inline const auto DARK_GREY = sf::Color(0x6B6E76FF);
@@ -43,6 +48,14 @@ inline float abs(const sf::Vector2<T>& v) {
 template <typename T>
 inline sf::Vector2<T> Normed(const sf::Vector2<T>& right) {
     return right / std::abs(right);
+}
+
+inline float Dot(const sf::Vector2f& left, const sf::Vector2f& right) {
+    return left.x * right.x + left.y * right.y;
+}
+
+inline float Cos(const sf::Vector2f& left, const sf::Vector2f& right) {
+    return Dot(left, right) / (std::abs(left) * std::abs(right));
 }
 
 inline WindXy Center(const sf::FloatRect& rect) {
@@ -100,6 +113,7 @@ private:
 };
 
 inline std::mt19937 gen;
+inline std::normal_distribution<float> NORMAL;
 
 template <class T = float>
 inline float Rand(T from = std::numeric_limits<T>::lowest(), T to = std::numeric_limits<T>::max()) {

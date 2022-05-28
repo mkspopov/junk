@@ -8,7 +8,7 @@
 #include <vector>
 
 struct Cars {
-    void Add(WindXy at, sf::Vector2f velocity, int start, WindXy finish) {
+    void Add(WindXy at, sf::Vector2f velocity, WindXy finish) {
         sf::FloatRect rect = {at, {30, 30}};
         for (const auto& other : physics.rects) {
             if (rect.intersects(other)) {
@@ -16,7 +16,6 @@ struct Cars {
             }
         }
         physics.PushBack(rect, velocity, WindXy(0, 0), 1);
-        from.push_back(start);
         to.push_back(finish);
     }
 
@@ -43,6 +42,11 @@ struct Cars {
         }
     }
 
+    void Erase(std::size_t index) {
+        physics.Erase(index);
+        to.erase(to.begin() + index);
+    }
+
     void Render(sf::RenderWindow& window, float part) const {
         for (std::size_t i = 0; i < physics.Size(); ++i) {
             auto rect = physics.rects[i];
@@ -55,10 +59,10 @@ struct Cars {
     }
 
     void Update(sf::RenderWindow& window) {
-        for (std::size_t i = 0; i < physics.Size(); ++i) {
-            physics.SetVelocity(i, SPEED * Normed(to[i] - GetPosition(physics.rects[i])));
-//            physics.SetVelocity(i, physics.velocities[i] + physics.accelerations[i]);
-        }
+//        for (std::size_t i = 0; i < physics.Size(); ++i) {
+//            physics.SetVelocity(i, SPEED * Normed(to[i] - GetPosition(physics.rects[i])));
+////            physics.SetVelocity(i, physics.velocities[i] + physics.accelerations[i]);
+//        }
 
         static CollisionDetector detector;
         detector.Clear();
@@ -88,13 +92,11 @@ struct Cars {
         }
         for (auto i = dead.rbegin(); i != dead.rend(); ++i) {
             physics.Erase(*i);
-            from.erase(from.begin() + *i);
             to.erase(to.begin() + *i);
         }
     }
 
     Physics physics;
-    std::vector<int> from;
     std::vector<WindXy> to;
     static constexpr float SPEED = 10;
 };
