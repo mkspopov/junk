@@ -4,16 +4,18 @@
 
 #include <SFML/Graphics/CircleShape.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
-#include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Graphics/RenderTarget.hpp>
 #include <SFML/System/Vector2.hpp>
 
+#include <functional>
 #include <iostream>
 #include <ostream>
 #include <thread>
 #include <unordered_set>
 #include <vector>
+#include <bitset>
 
-inline float GRAVITY_CONST = 1;
+inline float GRAVITY_CONST = 0.0001;
 inline float MAX_SPEED = 5;
 
 struct FirstHit {
@@ -21,18 +23,42 @@ struct FirstHit {
         return !cannotHitSet.contains(index);
     }
 
-    std::size_t otherIndex = -1;
+    void AddHit(float start, char coordinate, std::size_t otherIndex) {
+        if (start < time) {
+            time = start;
+            coords.clear();
+            coords.push_back(coordinate);
+            otherIndices.clear();
+            otherIndices.push_back(otherIndex);
+        } else if (start == time) {
+            coords.push_back(coordinate);
+            otherIndices.push_back(otherIndex);
+        }
+    }
+
+    std::vector<char> coords;
+    // otherIndices are greater than this index
+    std::vector<std::size_t> otherIndices;
     std::unordered_set<std::size_t> cannotHitSet;
     float time = 1;
-    char coord;
 };
 
 struct Physics {
+    enum Properties {
+        None = -1,
+//        Collision = 1 << 3,
+        Gravity,
+//        Friction = 1 << 1,
+//        Elasticity = 1 << 2,
+        Move,
+    };
+
     void Erase(std::size_t index) {
         rects.erase(rects.begin() + index);
         accelerations.erase(accelerations.begin() + index);
         velocities.erase(velocities.begin() + index);
         masses.erase(masses.begin() + index);
+        properties.erase(properties.begin() + index);
     }
 
     void PushBack(
@@ -45,6 +71,7 @@ struct Physics {
         accelerations.push_back(acceleration);
         velocities.push_back(velocity);
         masses.push_back(mass);
+        properties.emplace_back().set();
     }
 
     void PopBack() {
@@ -52,9 +79,13 @@ struct Physics {
         accelerations.pop_back();
         velocities.pop_back();
         masses.pop_back();
+        properties.pop_back();
     }
 
     void SetVelocity(std::size_t index, sf::Vector2f velocity) {
+        if (!properties[index].test(Move)) {
+            return;
+        }
         auto speed = std::abs(velocity);
         velocities[index] = velocity;
         if (speed > MAX_SPEED) {
@@ -70,18 +101,22 @@ struct Physics {
     std::vector<sf::Vector2f> accelerations;
     std::vector<sf::Vector2f> velocities;
     std::vector<float> masses;
+    std::vector<std::bitset<8>> properties;
 };
 
 struct GravityForce {
     void Apply(Physics& physics) const {
         for (std::size_t i = 0; i < physics.Size(); ++i) {
+            if (!physics.properties[i].test(Physics::Properties::Gravity)) {
+                continue;
+            }
             const auto direction = position - Center(physics.rects[i]);
             const auto distance = std::abs(direction);
             physics.velocities[i] += GRAVITY_CONST * mass / std::pow(distance, 3.f) * direction;
         }
     }
 
-    void Render(sf::RenderWindow& window) {
+    void Render(sf::RenderTarget& window) {
         sf::CircleShape circle(3);
         circle.setPosition(position);
         circle.setFillColor(sf::Color::Magenta);
@@ -104,9 +139,9 @@ struct Particles {
         const std::vector<std::size_t>& hitIndices,
         std::vector<Locked<FirstHit>>& firstHits);
 
-    void Render(sf::RenderWindow& window, float part);
+    void Render(sf::RenderTarget& window, float part);
 
-    void Update(sf::RenderWindow& window, const std::vector<Physics*>& others);
+    void Update(sf::RenderTarget& window, const std::vector<Physics*>& others);
 
     Physics physics;
 

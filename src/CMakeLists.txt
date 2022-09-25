@@ -50,3 +50,8 @@ target_link_libraries(
     ${GTEST_LIBRARIES}
     pthread
 )
+
+add_executable(
+    compile_matrices
+    compile_matrices.cpp
+)

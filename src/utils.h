@@ -1,7 +1,9 @@
 #pragma once
 
-#include <SFML/System/Vector2.hpp>
 #include <SFML/Graphics/Font.hpp>
+#include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Graphics/Text.hpp>
+#include <SFML/System/Vector2.hpp>
 
 #include <complex>
 #include <memory>
@@ -125,3 +127,25 @@ inline float Rand(T from = std::numeric_limits<T>::lowest(), T to = std::numeric
         return dis(gen);
     }
 }
+
+inline std::map<std::string, double, std::less<>> gStats;
+
+inline void DrawStats(sf::RenderWindow& window) {
+    int height = 10;
+    for (const auto& [name, value] : gStats) {
+        sf::Text text(
+            name + ": " + std::to_string(value),
+            PURISA_FONT,
+            20
+        );
+        text.setFillColor(sf::Color::Black);
+        text.setPosition(WIDTH - 300, height);
+        height += 40;
+        window.draw(text);
+    }
+}
+
+//template <class T>
+//std::enable_if_t<std::is_arithmetic_v<T>, bool> AlmostEqual(T lhs, T rhs) {
+//    return std::abs(rhs - lhs) <= 1e-6;
+//}

@@ -2,6 +2,9 @@
 
 #include "utils.h"
 
+#include <SFML/Graphics/VertexArray.hpp>
+
+#include <array>
 #include <vector>
 
 int GetVertex(WindXy pos) {

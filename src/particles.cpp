@@ -28,10 +28,7 @@ bool Particles::Add(WindXy at, sf::Vector2f acceleration, sf::Vector2f velocity,
             return false;
         }
     }
-    physics.rects.push_back(std::move(rect));
-    physics.accelerations.push_back(acceleration);
-    physics.velocities.push_back(velocity);
-    physics.masses.push_back(density * size.x * size.y);
+    physics.PushBack(rect, velocity, acceleration, density * size.x * size.y);
 
     return true;
 }
@@ -40,7 +37,7 @@ bool Particles::Add(float atx, float aty, float ax, float ay, float vx, float vy
     return Add(WindXy(atx, aty), WindXy(ax, ay), sf::Vector2f(vx, vy), sf::Vector2f(sx, sy), density);
 }
 
-void DisplayText(sf::RenderWindow& window, WindXy position, const std::string& str, uint size = 10) {
+void DisplayText(sf::RenderTarget& window, WindXy position, const std::string& str, uint size = 10) {
     sf::Text text(str, PURISA_FONT);
     text.setCharacterSize(size);
     text.setStyle(sf::Text::Bold);
@@ -50,7 +47,7 @@ void DisplayText(sf::RenderWindow& window, WindXy position, const std::string& s
     window.draw(text);
 }
 
-void Particles::Render(sf::RenderWindow& window, float part) {
+void Particles::Render(sf::RenderTarget& window, float part) {
     for (std::size_t i = 0; i < physics.Size(); ++i) {
         auto shape = sf::RectangleShape({physics.rects[i].width, physics.rects[i].height});
         shape.setPosition(physics.rects[i].left, physics.rects[i].top);
@@ -110,10 +107,12 @@ bool StrictlyIntersects(const sf::RectangleShape& a, const sf::RectangleShape& b
 }
 
 void CollisionDetector::CheckCollision(Physics& physics, std::size_t i, std::size_t j) {
+    ++gStats["CheckCollision calls"];
     if (!firstHits_[i]->CanHit(j)) {
         return;
     }
 
+    ++gStats["CheckCollision checks"];
     auto iPos = GetPosition(physics.rects[i]);
     auto jPos = GetPosition(physics.rects[j]);
     auto velocity = physics.velocities[i] - physics.velocities[j];
@@ -147,7 +146,7 @@ void CollisionDetector::CheckCollision(Physics& physics, std::size_t i, std::siz
             start = std::max(start, (stayingMin - movingMax) / v);
             end = std::min(end, (stayingMax - movingMin) / v);
         }
-        if (prevStart != start) {
+        if (prevStart <= start) {
             startCoord = coord;
         }
         return true;
@@ -173,22 +172,13 @@ void CollisionDetector::CheckCollision(Physics& physics, std::size_t i, std::siz
     {
         return;
     }
-    if (start <= end) {
-        {
+    if (start < end) {
+        if (i < j) {
             std::unique_lock lock(firstHits_[i]);
-            if (firstHits_[i]->time > start) {
-                firstHits_[i]->time = start;
-                firstHits_[i]->coord = startCoord;
-                firstHits_[i]->otherIndex = j;
-            }
-        }
-        {
+            firstHits_[i]->AddHit(start, startCoord, j);
+        } else {
             std::unique_lock lock(firstHits_[j]);
-            if (firstHits_[j]->time > start) {
-                firstHits_[j]->time = start;
-                firstHits_[j]->coord = startCoord;
-                firstHits_[j]->otherIndex = i;
-            }
+            firstHits_[j]->AddHit(start, startCoord, i);
         }
         if (StrictlyIntersects(physics.rects[i], physics.rects[j])) {
             std::cerr << "Found strict collision between " << i << " and " << j << std::endl;
@@ -305,31 +295,37 @@ void Particles::CollisionsCallback(
     }
 
     for (std::size_t i : hitIndices) {
-        const auto j = firstHits[i]->otherIndex;
-        firstHits[i]->cannotHitSet.insert(j);
-        firstHits[j]->cannotHitSet.insert(i);
+        for (std::size_t jInd = 0; jInd < firstHits[i]->otherIndices.size(); ++jInd) {
+            const auto j = firstHits[i]->otherIndices[jInd];
+            firstHits[i]->cannotHitSet.insert(j);
+            firstHits[j]->cannotHitSet.insert(i);
 
-        const auto iVelocity = physics.velocities[i];
-        const auto jVelocity = physics.velocities[j];
+            const auto iVelocity = physics.velocities[i];
+            const auto jVelocity = physics.velocities[j];
 
-        if (firstHits[i]->coord == 'x') {
-            physics.SetVelocity(i, sf::Vector2f{
-                CalcElasticCollisionSpeed(physics.masses[i], physics.masses[j], iVelocity.x, jVelocity.x),
-                physics.velocities[i].y,
-            });
-            physics.SetVelocity(j, sf::Vector2f{
-                CalcElasticCollisionSpeed(physics.masses[j], physics.masses[i], jVelocity.x, iVelocity.x),
-                physics.velocities[j].y,
-            });
-        } else {
-            physics.SetVelocity(i, sf::Vector2f{
-                physics.velocities[i].x,
-                CalcElasticCollisionSpeed(physics.masses[i], physics.masses[j], iVelocity.y, jVelocity.y),
-            });
-            physics.SetVelocity(j, sf::Vector2f{
-                physics.velocities[j].x,
-                CalcElasticCollisionSpeed(physics.masses[j], physics.masses[i], jVelocity.y, iVelocity.y),
-            });
+            if (firstHits[i]->coords[jInd] == 'x') {
+                physics.SetVelocity(i, sf::Vector2f{
+                    CalcElasticCollisionSpeed(physics.masses[i], physics.masses[j], iVelocity.x,
+                        jVelocity.x),
+                    physics.velocities[i].y,
+                });
+                physics.SetVelocity(j, sf::Vector2f{
+                    CalcElasticCollisionSpeed(physics.masses[j], physics.masses[i], jVelocity.x,
+                        iVelocity.x),
+                    physics.velocities[j].y,
+                });
+            } else {
+                physics.SetVelocity(i, sf::Vector2f{
+                    physics.velocities[i].x,
+                    CalcElasticCollisionSpeed(physics.masses[i], physics.masses[j], iVelocity.y,
+                        jVelocity.y),
+                });
+                physics.SetVelocity(j, sf::Vector2f{
+                    physics.velocities[j].x,
+                    CalcElasticCollisionSpeed(physics.masses[j], physics.masses[i], jVelocity.y,
+                        iVelocity.y),
+                });
+            }
         }
     }
 }
@@ -341,7 +337,8 @@ bool CollisionDetector::Detect(Physics& physics, float& timeLeft, TCallback call
 
     for (auto& firstHit : firstHits_) {
         firstHit->time = 1;
-        firstHit->otherIndex = -1;
+        firstHit->otherIndices.clear();
+        firstHit->coords.clear();
     }
     for (std::size_t i = 0; i < physics.Size(); ++i) {
         const auto [x, y] = GetPosition(physics.rects[i]);
@@ -363,16 +360,12 @@ bool CollisionDetector::Detect(Physics& physics, float& timeLeft, TCallback call
     std::vector<std::size_t> hitIndices;
     float minHitStart = 1;
     for (std::size_t i = 0; i < physics.Size(); ++i) {
-        const auto otherIndex = firstHits_[i]->otherIndex;
-        if (i < otherIndex &&
-            otherIndex < physics.Size() &&
-            firstHits_[otherIndex]->otherIndex == i) {
-            if (minHitStart > firstHits_[i]->time) {
-                minHitStart = firstHits_[i]->time;
-                hitIndices = {i};
-            } else if (minHitStart == firstHits_[i]->time) {
-                hitIndices.push_back(i);
-            }
+        if (minHitStart > firstHits_[i]->time) {
+            minHitStart = firstHits_[i]->time;
+            hitIndices.clear();
+            hitIndices.push_back(i);
+        } else if (minHitStart == firstHits_[i]->time) {
+            hitIndices.push_back(i);
         }
     }
     if (minHitStart > 0) {
@@ -398,7 +391,7 @@ void CollisionDetector::Clear() {
     firstHits_.clear();
 }
 
-void Particles::Update(sf::RenderWindow& window, const std::vector<Physics*>& others) {
+void Particles::Update(sf::RenderTarget& window, const std::vector<Physics*>& others) {
     for (std::size_t i = 0; i < physics.Size(); ++i) {
         physics.SetVelocity(i, physics.velocities[i] + physics.accelerations[i]);
     }

@@ -88,7 +88,7 @@ struct Hero {
         }
     }
 
-    void Render(sf::RenderWindow& window, float dt) {
+    void Render(sf::RenderTarget& window, float dt) {
         auto shape = sf::RectangleShape({physics.rects.back().width, physics.rects.back().height});
         shape.setPosition(physics.rects.back().left, physics.rects.back().top);
         shape.setFillColor(sf::Color::Red);
