@@ -8,7 +8,7 @@ namespace hero {
 
 struct Hero {
     Hero() {
-        physics.rects.emplace_back(sf::Vector2f(50, 50), WindXy(0, 0));
+        physics.shapes.emplace_back(sf::Vector2f(50, 50), WindXy(0, 0));
 
         keyPressed_.fill(false);
 
@@ -89,15 +89,15 @@ struct Hero {
     }
 
     void Render(sf::RenderTarget& window, float dt) {
-        auto shape = sf::RectangleShape({physics.rects.back().width, physics.rects.back().height});
-        shape.setPosition(physics.rects.back().left, physics.rects.back().top);
+        auto shape = sf::RectangleShape({physics.shapes.back().width, physics.shapes.back().height});
+        shape.setPosition(physics.shapes.back().left, physics.shapes.back().top);
         shape.setFillColor(sf::Color::Red);
         shape.move(physics.velocities.back() * dt);
         window.draw(shape);
     }
 
     void Update() {
-         Move(physics.rects.back(), physics.velocities.back());
+         Move(physics.shapes.back(), physics.velocities.back());
     }
 
     Physics physics;

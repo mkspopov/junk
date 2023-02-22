@@ -6,14 +6,19 @@ add_library(
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(SFML REQUIRED COMPONENTS audio graphics network system window)
 
-target_link_libraries(
-    particles PUBLIC
+set(
+    EXTERNAL_LIBRARIES
     sfml-audio
     sfml-graphics
     sfml-network
     sfml-system
     sfml-window
     ${Boost_LIBRARIES}
+)
+
+target_link_libraries(
+    particles PUBLIC
+    ${EXTERNAL_LIBRARIES}
 )
 
 add_library(
@@ -54,4 +59,32 @@ target_link_libraries(
 add_executable(
     compile_matrices
     compile_matrices.cpp
+)
+
+add_executable(
+    matrix
+    matrix.cpp
+)
+
+target_compile_options(matrix PRIVATE -march=native)
+
+add_executable(
+    water_of_particles
+    water_of_particles.cpp
+    grid_collision.cpp
+)
+
+target_link_libraries(
+    water_of_particles PUBLIC
+    ${EXTERNAL_LIBRARIES}
+)
+
+add_executable(
+    miner
+    miner.cpp
+)
+
+target_link_libraries(
+    miner PUBLIC
+    ${EXTERNAL_LIBRARIES}
 )

@@ -5,8 +5,8 @@
 TEST(Collisions, OneDimension) {
     Particles particles;
     auto check = [&](int i, sf::Vector2f pos, sf::Vector2f velocity) {
-        ASSERT_FLOAT_EQ(particles.physics.rects[i].left, pos.x);
-        ASSERT_FLOAT_EQ(particles.physics.rects[i].top, pos.y);
+        ASSERT_FLOAT_EQ(particles.physics.shapes[i].left, pos.x);
+        ASSERT_FLOAT_EQ(particles.physics.shapes[i].top, pos.y);
         ASSERT_FLOAT_EQ(particles.physics.velocities[i].x, velocity.x);
         ASSERT_FLOAT_EQ(particles.physics.velocities[i].y, velocity.y);
     };

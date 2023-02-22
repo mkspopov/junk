@@ -36,7 +36,7 @@ struct WaterBottle {
             initialDensitySum_ += std::reduce(row.begin(), row.end());
         }
         velocity_ = {static_cast<std::size_t>(xSize), std::vector<sf::Vector2f>(ySize)};
-        pressure_ = {static_cast<std::size_t>(xSize), std::vector<float>(ySize)};
+//        pressure_ = {static_cast<std::size_t>(xSize), std::vector<float>(ySize)};
         RecalcPressure();
     }
 
@@ -146,48 +146,48 @@ private:
     }
 
     void RecalcVelocities() {
-//        if (static_cast<int>(gStats["ticks"]) % 128 == 0) {
-//            std::cerr << gStats["ticks"] << std::endl;
+////        if (static_cast<int>(gStats["ticks"]) % 128 == 0) {
+////            std::cerr << gStats["ticks"] << std::endl;
+////        }
+//        // By Ox:
+//        for (int i = 0; i < velocity_.size(); ++i) {
+//            for (int j = 0; j < velocity_[0].size(); ++j) {
+//                float pressure = 0;
+//                if (j > 0) {
+//                    pressure += pressure_[i][j - 1];
+//                }
+//                if (j + 1 < velocity_[0].size()) {
+//                    pressure -= pressure_[i][j + 1];
+//                }
+//                float xAcc = pressure / density_[i][j] / ds_;
+//                velocity_[i][j] += sf::Vector2f{xAcc, 0};
+//            }
 //        }
-        // By Ox:
-        for (int i = 0; i < velocity_.size(); ++i) {
-            for (int j = 0; j < velocity_[0].size(); ++j) {
-                float pressure = 0;
-                if (j > 0) {
-                    pressure += pressure_[i][j - 1];
-                }
-                if (j + 1 < velocity_[0].size()) {
-                    pressure -= pressure_[i][j + 1];
-                }
-                float xAcc = pressure / density_[i][j] / ds_;
-                velocity_[i][j] += sf::Vector2f{xAcc, 0};
-            }
-        }
-        // By Oy:
-        for (int i = 0; i < velocity_.size(); ++i) {
-            for (int j = 0; j < velocity_[0].size(); ++j) {
-                float pressure = 0;
-                if (i > 0) {
-                    pressure += pressure_[i - 1][j];
-                }
-                if (i + 1 < velocity_.size()) {
-                    pressure -= pressure_[i + 1][j];
-                }
-                float yAcc = pressure / density_[i][j] / ds_;
-                velocity_[i][j] += sf::Vector2f{0, yAcc};
-            }
-        }
+//        // By Oy:
+//        for (int i = 0; i < velocity_.size(); ++i) {
+//            for (int j = 0; j < velocity_[0].size(); ++j) {
+//                float pressure = 0;
+//                if (i > 0) {
+//                    pressure += pressure_[i - 1][j];
+//                }
+//                if (i + 1 < velocity_.size()) {
+//                    pressure -= pressure_[i + 1][j];
+//                }
+//                float yAcc = pressure / density_[i][j] / ds_;
+//                velocity_[i][j] += sf::Vector2f{0, yAcc};
+//            }
+//        }
     }
 
     void RecalcPressure() {
-        for (int j = 0; j < pressure_[0].size(); ++j) {
-            pressure_[0][j] = density_[0][j] * GRAVITY_CONST * ds_;
-        }
-        for (int i = 1; i < pressure_.size(); ++i) {
-            for (int j = 0; j < pressure_[0].size(); ++j) {
-                pressure_[i][j] = pressure_[i - 1][j] + density_[i][j] * GRAVITY_CONST * ds_;
-            }
-        }
+//        for (int j = 0; j < pressure_[0].size(); ++j) {
+//            pressure_[0][j] = density_[0][j] * GRAVITY_CONST * ds_;
+//        }
+//        for (int i = 1; i < pressure_.size(); ++i) {
+//            for (int j = 0; j < pressure_[0].size(); ++j) {
+//                pressure_[i][j] = pressure_[i - 1][j] + density_[i][j] * GRAVITY_CONST * ds_;
+//            }
+//        }
     }
 
     const int ds_ = 10;
@@ -196,8 +196,8 @@ private:
     std::vector<sf::RectangleShape> borders_;
     std::vector<std::vector<sf::Vector2f>> velocity_;
     std::vector<std::vector<float>> density_;
-    std::vector<std::vector<float>> pressure_;
+//    std::vector<std::vector<float>> pressure_;
     float initialDensitySum_ = 0;
 
-    bool canUpdate_ = false;
+    bool canUpdate_ = true;
 };

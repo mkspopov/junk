@@ -12,7 +12,7 @@ template <class TGame>
 void Main(TGame& game, int usPerUpdate = 30000) {
     sf::ContextSettings settings;
     settings.antialiasingLevel = 16;
-    sf::RenderWindow window({WIDTH, HEIGHT}, "TGame", sf::Style::Default, settings);
+    sf::RenderWindow window({utils::WIDTH, utils::HEIGHT}, "TGame", sf::Style::Default, settings);
 
     sf::Clock clock;
     sf::Int64 lag = 0;
@@ -27,27 +27,24 @@ void Main(TGame& game, int usPerUpdate = 30000) {
         }
         auto elapsed = clock.restart().asMicroseconds();
         lag += elapsed;
-        gStats["elapsed, mcs"] = elapsed;
+        utils::gStats["elapsed, mcs"] = elapsed;
 
         if (lag >= usPerUpdate) {
-            gStats["CheckCollision calls"] = 0;
-            gStats["CheckCollision checks"] = 0;
+            utils::gStats["CheckCollision calls"] = 0;
+            utils::gStats["CheckCollision checks"] = 0;
             game.Update(window);
-            ++gStats["updates"];
+            ++utils::gStats["updates"];
             lag -= usPerUpdate;
         }
 
-        window.clear(PEACH_PUFF);
+        window.clear(utils::LIGHT_GREY);
         if (lag < 1) {
             game.Render(window, static_cast<float>(lag) / usPerUpdate);
         } else {
             game.Render(window, 0);
         }
-        ++gStats["ticks"];
-//        if (gStats["ticks"] == 359) {
-//            std::cout << "Here" << std::endl;
-//        }
-        DrawStats(window);
+        ++utils::gStats["ticks"];
+        utils::DrawStats(window);
         window.display();
     }
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "physics.h"
 #include "utils.h"
 
 #include <SFML/Graphics/CircleShape.hpp>
@@ -15,8 +16,7 @@
 #include <vector>
 #include <bitset>
 
-inline float GRAVITY_CONST = 0.0001;
-inline float MAX_SPEED = 5;
+namespace particles {
 
 struct FirstHit {
     bool CanHit(std::size_t index) const {
@@ -43,74 +43,13 @@ struct FirstHit {
     float time = 1;
 };
 
-struct Physics {
-    enum Properties {
-        None = -1,
-//        Collision = 1 << 3,
-        Gravity,
-//        Friction = 1 << 1,
-//        Elasticity = 1 << 2,
-        Move,
-    };
-
-    void Erase(std::size_t index) {
-        rects.erase(rects.begin() + index);
-        accelerations.erase(accelerations.begin() + index);
-        velocities.erase(velocities.begin() + index);
-        masses.erase(masses.begin() + index);
-        properties.erase(properties.begin() + index);
-    }
-
-    void PushBack(
-        sf::FloatRect rect,
-        sf::Vector2f velocity,
-        sf::Vector2f acceleration,
-        float mass)
-    {
-        rects.push_back(std::move(rect));
-        accelerations.push_back(acceleration);
-        velocities.push_back(velocity);
-        masses.push_back(mass);
-        properties.emplace_back().set();
-    }
-
-    void PopBack() {
-        rects.pop_back();
-        accelerations.pop_back();
-        velocities.pop_back();
-        masses.pop_back();
-        properties.pop_back();
-    }
-
-    void SetVelocity(std::size_t index, sf::Vector2f velocity) {
-        if (!properties[index].test(Move)) {
-            return;
-        }
-        auto speed = std::abs(velocity);
-        velocities[index] = velocity;
-        if (speed > MAX_SPEED) {
-            velocities[index] *= MAX_SPEED / speed;
-        }
-    }
-
-    std::size_t Size() const {
-        return rects.size();
-    }
-
-    std::vector<sf::FloatRect> rects;
-    std::vector<sf::Vector2f> accelerations;
-    std::vector<sf::Vector2f> velocities;
-    std::vector<float> masses;
-    std::vector<std::bitset<8>> properties;
-};
-
 struct GravityForce {
     void Apply(Physics& physics) const {
         for (std::size_t i = 0; i < physics.Size(); ++i) {
             if (!physics.properties[i].test(Physics::Properties::Gravity)) {
                 continue;
             }
-            const auto direction = position - Center(physics.rects[i]);
+            const auto direction = position - Center(physics.shapes[i]);
             const auto distance = std::abs(direction);
             physics.velocities[i] += GRAVITY_CONST * mass / std::pow(distance, 3.f) * direction;
         }
@@ -127,37 +66,44 @@ struct GravityForce {
     WindXy position;
 };
 
+template <class TShape>
 struct Particles {
     void Add(int num, sf::FloatRect where);
 
-    bool Add(WindXy at, sf::Vector2f acceleration, sf::Vector2f velocity, sf::Vector2f size, float density = 1);
-    bool Add(float atx, float aty, float ax, float ay, float vx, float vy, float sx, float sy, float density = 1);
+    bool Add(WindXy at, sf::Vector2f acceleration, sf::Vector2f velocity, sf::Vector2f size,
+        float density = 1);
+
+    bool Add(float atx, float aty, float ax, float ay, float vx, float vy, float sx, float sy,
+        float density = 1);
 
     static void CollisionsCallback(
-        Physics& physics,
+        Physics<TShape>& physics,
         float dt,
         const std::vector<std::size_t>& hitIndices,
         std::vector<Locked<FirstHit>>& firstHits);
+
+    void HandleInput(const sf::Event& event);
 
     void Render(sf::RenderTarget& window, float part);
 
     void Update(sf::RenderTarget& window, const std::vector<Physics*>& others);
 
-    Physics physics;
+    Physics<TShape> physics;
 
     std::vector<std::pair<std::unique_ptr<sf::Shape>, int>> toRender;
 };
 
+template <class TShape>
 class CollisionDetector {
     using TCallback = std::function<void(
-        Physics& physics,
+        Physics<TShape>& physics,
         float dt,
         const std::vector<std::size_t>& hitIndices,
         std::vector<Locked<FirstHit>>& firstHits)>;
 public:
     void Clear();
 
-    bool Detect(Physics& physics, float& timeLeft, TCallback callback);
+    bool Detect(Physics<TShape>& physics, float& timeLeft, TCallback callback);
 
 private:
     struct BoundingBox {
@@ -166,9 +112,13 @@ private:
     };
 
     void CheckCollision(Physics& physics, std::size_t i, std::size_t j);
+
     void SimpleCheck(Physics& physics, const std::vector<BoundingBox>& boxes);
+
     void UpdateCollisions(Physics& physics, std::vector<BoundingBox>& boxes, bool sortByX);
 
     std::vector<BoundingBox> boxes_;
     std::vector<Locked<FirstHit>> firstHits_;
 };
+
+}  // namespace particles

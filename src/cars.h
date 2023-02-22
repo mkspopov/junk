@@ -12,7 +12,7 @@
 struct Cars {
     void Add(WindXy at, sf::Vector2f velocity, WindXy finish) {
         sf::FloatRect rect = {at, {30, 30}};
-        for (const auto& other : physics.rects) {
+        for (const auto& other : physics.shapes) {
             if (rect.intersects(other)) {
                 return;
             }
@@ -30,13 +30,13 @@ struct Cars {
         if (dt > 0) {
             // Move all before the first hit
             for (std::size_t i = 0; i < physics.Size(); ++i) {
-                Move(physics.rects[i], physics.velocities[i] * dt);
+                Move(physics.shapes[i], physics.velocities[i] * dt);
             }
         }
 
         for (std::size_t i : hitIndices) {
             // Cancel above Move
-            Move(physics.rects[i], -physics.velocities[i] * dt);
+            Move(physics.shapes[i], -physics.velocities[i] * dt);
 
 //            const auto j = firstHits[i]->otherIndex;
 //            physics.SetVelocity(i, {0, 0});
@@ -51,7 +51,7 @@ struct Cars {
 
     void Render(sf::RenderWindow& window, float part) const {
         for (std::size_t i = 0; i < physics.Size(); ++i) {
-            auto rect = physics.rects[i];
+            auto rect = physics.shapes[i];
             auto shape = sf::RectangleShape(WindXy(rect.width, rect.height));
             shape.setPosition(rect.left, rect.top);
             shape.move(physics.velocities[i] * part);
@@ -75,13 +75,13 @@ struct Cars {
 
         if (timeLeft > 0) {
             for (std::size_t i = 0; i < physics.Size(); ++i) {
-                Move(physics.rects[i], physics.velocities[i] * timeLeft);
+                Move(physics.shapes[i], physics.velocities[i] * timeLeft);
             }
         }
 
         std::vector<std::size_t> dead;
         for (std::size_t i = 0; i < physics.Size(); ++i) {
-            const auto& rect = physics.rects[i];
+            const auto& rect = physics.shapes[i];
             const float windX = window.getSize().x;
             const float windY = window.getSize().y;
             if (rect.left > windX ||
@@ -120,7 +120,7 @@ public:
     void Update(sf::RenderWindow& window) {
         // choose direction
         for (std::size_t i = 0; i < cars.physics.Size(); ++i) {
-            const auto vertex = GetVertex(Center(cars.physics.rects[i]));
+            const auto vertex = GetVertex(Center(cars.physics.shapes[i]));
             if (vertex < 0) {
                 continue;
             }
@@ -135,7 +135,7 @@ public:
                     bestDirection = dirInd;
                 }
             }
-            const auto targetDir = Normed(cars.to[i] - Center(cars.physics.rects[i]));
+            const auto targetDir = Normed(cars.to[i] - Center(cars.physics.shapes[i]));
             const WindXy intTargetDir = {std::round(targetDir.x), std::round(targetDir.y)};
             if (!edge) {
                 int dirInd = std::find(Graph::DIRS.begin(), Graph::DIRS.end(), intTargetDir) -
@@ -178,7 +178,7 @@ public:
 
         // remove cars
         for (int i = cars.physics.Size(); i >= 0; --i) {
-            if (std::abs(Center(cars.physics.rects[i]) - targets[0]) < 20) {
+            if (std::abs(Center(cars.physics.shapes[i]) - targets[0]) < 20) {
                 cars.Erase(i);
             }
         }

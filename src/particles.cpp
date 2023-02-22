@@ -23,7 +23,7 @@ void Particles::Add(int num, sf::FloatRect where) {
 
 bool Particles::Add(WindXy at, sf::Vector2f acceleration, sf::Vector2f velocity, sf::Vector2f size, float density) {
     sf::FloatRect rect(at, size);
-    for (const auto& other : physics.rects) {
+    for (const auto& other : physics.shapes) {
         if (rect.intersects(other)) {
             return false;
         }
@@ -37,20 +37,10 @@ bool Particles::Add(float atx, float aty, float ax, float ay, float vx, float vy
     return Add(WindXy(atx, aty), WindXy(ax, ay), sf::Vector2f(vx, vy), sf::Vector2f(sx, sy), density);
 }
 
-void DisplayText(sf::RenderTarget& window, WindXy position, const std::string& str, uint size = 10) {
-    sf::Text text(str, PURISA_FONT);
-    text.setCharacterSize(size);
-    text.setStyle(sf::Text::Bold);
-    text.setFillColor(sf::Color::Black);
-    text.setString(str);
-    text.setPosition(position);
-    window.draw(text);
-}
-
 void Particles::Render(sf::RenderTarget& window, float part) {
     for (std::size_t i = 0; i < physics.Size(); ++i) {
-        auto shape = sf::RectangleShape({physics.rects[i].width, physics.rects[i].height});
-        shape.setPosition(physics.rects[i].left, physics.rects[i].top);
+        auto shape = sf::RectangleShape({physics.shapes[i].width, physics.shapes[i].height});
+        shape.setPosition(physics.shapes[i].left, physics.shapes[i].top);
         shape.move(physics.velocities[i] * part);
         shape.setFillColor(LIGHT_GREY);
         window.draw(shape);
@@ -113,8 +103,8 @@ void CollisionDetector::CheckCollision(Physics& physics, std::size_t i, std::siz
     }
 
     ++gStats["CheckCollision checks"];
-    auto iPos = GetPosition(physics.rects[i]);
-    auto jPos = GetPosition(physics.rects[j]);
+    auto iPos = GetPosition(physics.shapes[i]);
+    auto jPos = GetPosition(physics.shapes[j]);
     auto velocity = physics.velocities[i] - physics.velocities[j];
     char startCoord = 'x';
 
@@ -155,9 +145,9 @@ void CollisionDetector::CheckCollision(Physics& physics, std::size_t i, std::siz
     if (!check(
         velocity.x,
         iPos.x,
-        iPos.x + physics.rects[i].width,
+        iPos.x + physics.shapes[i].width,
         jPos.x,
-        jPos.x + physics.rects[j].width,
+        jPos.x + physics.shapes[j].width,
         'x'))
     {
         return;
@@ -165,9 +155,9 @@ void CollisionDetector::CheckCollision(Physics& physics, std::size_t i, std::siz
     if (!check(
         velocity.y,
         iPos.y,
-        iPos.y + physics.rects[i].height,
+        iPos.y + physics.shapes[i].height,
         jPos.y,
-        jPos.y + physics.rects[j].height,
+        jPos.y + physics.shapes[j].height,
         'y'))
     {
         return;
@@ -180,7 +170,7 @@ void CollisionDetector::CheckCollision(Physics& physics, std::size_t i, std::siz
             std::unique_lock lock(firstHits_[j]);
             firstHits_[j]->AddHit(start, startCoord, i);
         }
-        if (StrictlyIntersects(physics.rects[i], physics.rects[j])) {
+        if (StrictlyIntersects(physics.shapes[i], physics.shapes[j])) {
             std::cerr << "Found strict collision between " << i << " and " << j << std::endl;
         }
     }
@@ -290,7 +280,7 @@ void Particles::CollisionsCallback(
     if (dt > 0) {
         // Move all before the first hit
         for (std::size_t i = 0; i < physics.Size(); ++i) {
-            Move(physics.rects[i], physics.velocities[i] * dt);
+            Move(physics.shapes[i], physics.velocities[i] * dt);
         }
     }
 
@@ -341,14 +331,14 @@ bool CollisionDetector::Detect(Physics& physics, float& timeLeft, TCallback call
         firstHit->coords.clear();
     }
     for (std::size_t i = 0; i < physics.Size(); ++i) {
-        const auto [x, y] = GetPosition(physics.rects[i]);
+        const auto [x, y] = GetPosition(physics.shapes[i]);
         const auto [vx, vy] = physics.velocities[i] * timeLeft;
         boxes_.push_back({
             {
                 std::min(x, x + vx),
                 std::min(y, y + vy),
-                physics.rects[i].width + std::abs(vx),
-                physics.rects[i].height + std::abs(vy),
+                physics.shapes[i].width + std::abs(vx),
+                physics.shapes[i].height + std::abs(vy),
             },
             i,
         });
@@ -399,7 +389,7 @@ void Particles::Update(sf::RenderTarget& window, const std::vector<Physics*>& ot
     for (auto other : others) {
         for (std::size_t i = 0; i < other->Size(); ++i) {
             physics.PushBack(
-                other->rects[i],
+                other->shapes[i],
                 other->accelerations[i],
                 other->velocities[i],
                 other->masses[i]);
@@ -414,7 +404,7 @@ void Particles::Update(sf::RenderTarget& window, const std::vector<Physics*>& ot
 
     if (timeLeft > 0) {
         for (std::size_t i = 0; i < physics.Size(); ++i) {
-            Move(physics.rects[i], physics.velocities[i] * timeLeft);
+            Move(physics.shapes[i], physics.velocities[i] * timeLeft);
         }
     }
 
@@ -425,7 +415,7 @@ void Particles::Update(sf::RenderTarget& window, const std::vector<Physics*>& ot
     }
     std::vector<std::size_t> dead;
     for (std::size_t i = 0; i < physics.Size(); ++i) {
-        const auto& rect = physics.rects[i];
+        const auto& rect = physics.shapes[i];
         const float windX = window.getSize().x;
         const float windY = window.getSize().y;
         if (rect.left > windX ||
@@ -439,4 +429,8 @@ void Particles::Update(sf::RenderTarget& window, const std::vector<Physics*>& ot
     for (auto i = dead.rbegin(); i != dead.rend(); ++i) {
         physics.Erase(*i);
     }
+}
+
+void Particles::HandleInput(const sf::Event& event) {
+
 }
