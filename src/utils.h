@@ -191,11 +191,17 @@ inline void DrawStats(sf::RenderWindow& window) {
 }
 
 void
-DisplayText(sf::RenderTarget& window, WindXy position, const std::string& str, uint size = 10) {
+DisplayText(
+    sf::RenderTarget& window,
+    WindXy position,
+    const std::string& str,
+    sf::Color color = sf::Color::Black,
+    uint size = 10)
+{
     sf::Text text(str, PURISA_FONT);
     text.setCharacterSize(size);
     text.setStyle(sf::Text::Bold);
-    text.setFillColor(sf::Color::Black);
+    text.setFillColor(color);
     text.setPosition(position);
     window.draw(text);
 }
